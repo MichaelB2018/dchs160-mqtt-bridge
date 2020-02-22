@@ -23,6 +23,7 @@ from tendo import singleton
 from logging.handlers import RotatingFileHandler
 from io import BytesIO
 from datetime import datetime, timedelta
+from shutil import copyfile
 
 try:
     from ConfigParser import RawConfigParser
