@@ -85,21 +85,21 @@ def haState(result, isWater):
     else:
        return "OK"
 
-def sendMQTT(ID, status):
+def sendMQTT(t, ID, status):
     logger.info("PUBLISHING to MQTT: home/dlink/sensor/state/"+str(ID)+" = " + status)
     t.publish("home/dlink/sensor/state/"+str(ID),status,retain=True)
     
-def sendMQTTAttr(ID, attr):
+def sendMQTTAttr(t, ID, attr):
     logger.info("PUBLISHING to MQTT: home/dlink/sensor/attributes/"+str(ID)+" = " + json.dumps(attr))
     t.publish("home/dlink/sensor/attributes/"+str(ID),json.dumps(attr))
     
-def sendRawMQTT(topic, msg):
+def sendRawMQTT(t, topic, msg):
     logger.info("PUBLISHING to MQTT: " + topic + " = " + msg)
     t.publish(topic,msg,retain=True)
 
-def sendStartupInfo(sensorID, sensorName):
+def sendStartupInfo(t, sensorID, sensorName):
     topic = sensorName.lower().replace(" ", "_")
-    sendRawMQTT("homeassistant/sensor/"+topic+"/config", '{"name": "'+sensorName+'", "state_topic": "home/dlink/sensor/state/'+str(sensorID)+'", "json_attributes_topic": "home/dlink/sensor/attributes/'+str(sensorID)+'"}')
+    sendRawMQTT(t, "homeassistant/sensor/"+topic+"/config", '{"name": "'+sensorName+'", "state_topic": "home/dlink/sensor/state/'+str(sensorID)+'", "json_attributes_topic": "home/dlink/sensor/attributes/'+str(sensorID)+'"}')
 
 def on_connect(client, userdata, flags, rc):
     global config
@@ -306,16 +306,16 @@ def runWaterSensorCheck(cmd, mqttHandler):
            DetectionTime = datetime.fromtimestamp(int(resp2["LatestDetectTime"])).strftime('%Y-%m-%d %H:%M:%S')
 
         if config["EnableDiscovery"]:
-            sendStartupInfo(1, resp1["DeviceName"])
+            sendStartupInfo(mqttHandler, 1, resp1["DeviceName"])
             time.sleep(5) # Let HomeAssistant Catch up
             
         attr = {"ModelDescription": resp1["ModelDescription"], "ModelName": resp1["ModelName"], "FirmwareVersion": resp1["FirmwareVersion"], "LatestFirmwareVersion": resp1["LatestFirmwareVersion"], "DeviceMacId": resp1["DeviceMacId"], "DetectionTime": DetectionTime}    
-        sendMQTTAttr(1, attr)
+        sendMQTTAttr(mqttHandler, 1, attr)
 
         while True:
             if connectionReset:
                 try:
-                    sendMQTT(1, "ERROR")
+                    sendMQTT(mqttHandler, 1, "ERROR")
                     prevState = "ERROR"
                     logger.error("Trying to reconnect...")
                     yield from client.login()
@@ -332,7 +332,7 @@ def runWaterSensorCheck(cmd, mqttHandler):
                     logger.debug("Got state: "+state)
                     
                     if (state != prevState):
-                        sendMQTT(1, state)
+                        sendMQTT(mqttHandler, 1, state)
                         prevState = state
                         logger.info("STATE CHANGED, NEW STATE " + state)
                     # print (cmd+": " + json.dumps(resp, indent=4) + "\n\n")
